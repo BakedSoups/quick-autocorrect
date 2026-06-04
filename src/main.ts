@@ -559,7 +559,7 @@ export default class BetterAutoCorrect extends Plugin {
 		return word.trim().toLowerCase();
 	}
 
-	private normalizeEndpointMode(mode: EndpointMode | undefined): EndpointMode {
+	private normalizeEndpointMode(mode: string | undefined): EndpointMode {
 		if (
 			mode === "standard" ||
 			mode === "premium" ||
