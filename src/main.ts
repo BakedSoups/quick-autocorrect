@@ -16,7 +16,7 @@ const MAX_REPLACEMENTS = 3;
 
 type EndpointMode = "standard" | "premium" | "local" | "custom";
 
-interface BetterAutoCorrectData {
+interface EasyAutoCorrectData {
 	customWords: string[];
 	endpointMode: EndpointMode;
 	serverUrl: string;
@@ -56,7 +56,7 @@ interface Issue {
 	offset: number;
 }
 
-const DEFAULT_DATA: BetterAutoCorrectData = {
+const DEFAULT_DATA: EasyAutoCorrectData = {
 	customWords: [],
 	endpointMode: "standard",
 	serverUrl: STANDARD_LANGUAGE_TOOL_URL,
@@ -82,8 +82,8 @@ function normalizeServerUrl(url: string): string {
 	return url.trim().replace(/\/v2\/check\/?$/, "").replace(/\/$/, "");
 }
 
-class BetterAutoCorrectSettingTab extends PluginSettingTab {
-	constructor(app: App, private plugin: BetterAutoCorrect) {
+class EasyAutoCorrectSettingTab extends PluginSettingTab {
+	constructor(app: App, private plugin: EasyAutoCorrect) {
 		super(app, plugin);
 	}
 
@@ -195,7 +195,7 @@ class BetterAutoCorrectSettingTab extends PluginSettingTab {
 class SpellingGrammarModal extends Modal {
 	constructor(
 		app: App,
-		private plugin: BetterAutoCorrect,
+		private plugin: EasyAutoCorrect,
 		private editor: Editor,
 		private issue: Issue,
 		private issueIndex: number,
@@ -212,33 +212,33 @@ class SpellingGrammarModal extends Modal {
 	private render() {
 		const { contentEl, titleEl } = this;
 		contentEl.empty();
-		contentEl.addClass("better-auto-correct-modal");
+		contentEl.addClass("easy-auto-correct-modal");
 
 		titleEl.setText(this.getTitle());
 
 		contentEl.createEl("p", {
-			cls: "better-auto-correct-count",
+			cls: "easy-auto-correct-count",
 			text: `Issue ${this.issueIndex + 1} of ${this.issueCount}`,
 		});
 
 		contentEl.createEl("h3", {
-			cls: "better-auto-correct-match",
+			cls: "easy-auto-correct-match",
 			text: this.issue.text,
 		});
 
 		contentEl.createEl("p", {
-			cls: "better-auto-correct-message",
+			cls: "easy-auto-correct-message",
 			text: this.issue.match.message,
 		});
 
 		const replacements = this.issue.match.replacements.slice(0, MAX_REPLACEMENTS);
 		if (replacements.length > 0) {
 			const suggestionContainer = contentEl.createDiv({
-				cls: "better-auto-correct-suggestions",
+				cls: "easy-auto-correct-suggestions",
 			});
 			for (const replacement of replacements) {
 				const button = suggestionContainer.createEl("button", {
-					cls: "better-auto-correct-suggestion",
+					cls: "easy-auto-correct-suggestion",
 					text: replacement.value,
 				});
 				button.addEventListener("click", () => {
@@ -249,17 +249,17 @@ class SpellingGrammarModal extends Modal {
 			}
 		} else {
 			contentEl.createEl("p", {
-				cls: "better-auto-correct-empty",
+				cls: "easy-auto-correct-empty",
 				text: "No replacement suggestions available.",
 			});
 		}
 
 		const actionContainer = contentEl.createDiv({
-			cls: "better-auto-correct-actions",
+			cls: "easy-auto-correct-actions",
 		});
 
 		const addButton = actionContainer.createEl("button", {
-			cls: "better-auto-correct-action",
+			cls: "easy-auto-correct-action",
 			// eslint-disable-next-line obsidianmd/ui/sentence-case
 			text: "Add to Dictionary",
 		});
@@ -270,7 +270,7 @@ class SpellingGrammarModal extends Modal {
 		});
 
 		const ignoreButton = actionContainer.createEl("button", {
-			cls: "better-auto-correct-action",
+			cls: "easy-auto-correct-action",
 			text: "Ignore",
 		});
 		ignoreButton.addEventListener("click", () => {
@@ -279,7 +279,7 @@ class SpellingGrammarModal extends Modal {
 		});
 
 		const nextButton = actionContainer.createEl("button", {
-			cls: "better-auto-correct-action",
+			cls: "easy-auto-correct-action",
 			text: "Next",
 		});
 		nextButton.addEventListener("click", () => {
@@ -288,7 +288,7 @@ class SpellingGrammarModal extends Modal {
 		});
 
 		const closeButton = actionContainer.createEl("button", {
-			cls: "better-auto-correct-action",
+			cls: "easy-auto-correct-action",
 			text: "Close",
 		});
 		closeButton.addEventListener("click", () => {
@@ -314,15 +314,15 @@ class SpellingGrammarModal extends Modal {
 	}
 }
 
-export default class BetterAutoCorrect extends Plugin {
-	data: BetterAutoCorrectData = DEFAULT_DATA;
+export default class EasyAutoCorrect extends Plugin {
+	data: EasyAutoCorrectData = DEFAULT_DATA;
 	private issues: Issue[] = [];
 	private currentIssueIndex = 0;
 	private activeModal: SpellingGrammarModal | null = null;
 
 	async onload() {
 		await this.loadPluginData();
-		this.addSettingTab(new BetterAutoCorrectSettingTab(this.app, this));
+		this.addSettingTab(new EasyAutoCorrectSettingTab(this.app, this));
 
 		this.addCommand({
 			id: "check-spelling-and-grammar",
@@ -421,7 +421,7 @@ export default class BetterAutoCorrect extends Plugin {
 	}
 
 	private async loadPluginData() {
-		const loadedData = (await this.loadData()) as Partial<BetterAutoCorrectData> | null;
+		const loadedData = (await this.loadData()) as Partial<EasyAutoCorrectData> | null;
 		const endpointMode = this.normalizeEndpointMode(loadedData?.endpointMode);
 		const defaultServerUrl = getUrlForMode(endpointMode) || DEFAULT_DATA.serverUrl;
 

@@ -1,21 +1,21 @@
-.better-auto-correct-modal {
+.easy-auto-correct-modal {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
 }
 
-.better-auto-correct-count,
-.better-auto-correct-message,
-.better-auto-correct-empty {
+.easy-auto-correct-count,
+.easy-auto-correct-message,
+.easy-auto-correct-empty {
 	margin: 0;
 }
 
-.better-auto-correct-count {
+.easy-auto-correct-count {
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 }
 
-.better-auto-correct-match {
+.easy-auto-correct-match {
 	margin: 0;
 	padding: 8px 10px;
 	border: 1px solid var(--background-modifier-border);
@@ -26,21 +26,21 @@
 	overflow-wrap: anywhere;
 }
 
-.better-auto-correct-suggestions,
-.better-auto-correct-actions {
+.easy-auto-correct-suggestions,
+.easy-auto-correct-actions {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 8px;
 }
 
-.better-auto-correct-actions {
+.easy-auto-correct-actions {
 	margin-top: 6px;
 	padding-top: 12px;
 	border-top: 1px solid var(--background-modifier-border);
 }
 
-.better-auto-correct-suggestion,
-.better-auto-correct-action {
+.easy-auto-correct-suggestion,
+.easy-auto-correct-action {
 	width: auto;
 	min-width: 0;
 	height: 30px;
@@ -48,7 +48,7 @@
 	line-height: 1;
 }
 
-.better-auto-correct-suggestion {
+.easy-auto-correct-suggestion {
 	max-width: 100%;
 	overflow: hidden;
 	text-overflow: ellipsis;
