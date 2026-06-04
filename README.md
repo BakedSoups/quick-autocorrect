@@ -5,7 +5,7 @@ Usually in Obsidian, correcting misspellings means hovering over each typo, open
 <img width="800" height="450" alt="after" src="https://github.com/user-attachments/assets/672febcc-a617-4014-b14d-8681e859cafd" />
 
 
-Easy Auto Correct checks the current Obsidian note for spelling and grammar issues using a configurable LanguageTool endpoint.
+Easy Auto Correct reviews spelling and grammar issues in the current note from a Google Docs-style suggestion menu.
 
 ## Endpoint options
 By default, the plugin uses the standard public LanguageTool API:

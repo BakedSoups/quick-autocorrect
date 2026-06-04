@@ -1,7 +1,7 @@
 {
 	"name": "easy-auto-correct",
 	"version": "1.0.0",
-	"description": "Check spelling and grammar in Obsidian with a configurable LanguageTool endpoint.",
+	"description": "Review spelling and grammar issues in Obsidian from a Google Docs-style suggestion menu.",
 	"main": "main.js",
 	"type": "module",
 	"scripts": {

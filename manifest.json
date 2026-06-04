@@ -3,7 +3,7 @@
 	"name": "Easy Auto Correct",
 	"version": "1.0.0",
 	"minAppVersion": "1.0.0",
-	"description": "Check spelling and grammar in the current note with a configurable LanguageTool endpoint.",
+	"description": "Review spelling and grammar issues in the current note from a Google Docs-style suggestion menu.",
 	"author": "Alex Peczon",
 	"isDesktopOnly": false
 }
