@@ -21,9 +21,15 @@ When you run the checker, the current note text is sent to the configured endpoi
 
 The plugin does not use Electron spellcheck, cspell, typo-js, nspell, or bundled spellchecker libraries.
 
+## Privacy
+
+Easy Auto Correct sends the current note text to the endpoint selected in settings only when you run a check. The default endpoint is the standard public LanguageTool API. To avoid sending note text to a public service, run a local or self-hosted LanguageTool server and select **Local server** or **Custom URL**.
+
+The plugin does not collect analytics, store telemetry, or send vault data in the background.
+
 ## Local server with Docker
 
-if you want to make all your spellchecking offline/private without the public API, run LanguageTool as a separate local Docker container:
+If you want to keep spellchecking local instead of using the public API, run LanguageTool as a separate local Docker container:
 
 ```bash
 docker run --rm -p 8010:8010 silviof/docker-languagetool
@@ -57,3 +63,14 @@ npm run build
 ```
 
 Release artifacts are `manifest.json`, `main.js`, and `styles.css`.
+
+## Release
+
+For an Obsidian community plugin release:
+
+1. Run `npm run build`.
+2. Confirm `manifest.json` and `versions.json` use the same plugin version.
+3. Create a GitHub release whose tag exactly matches `manifest.json` `version`, for example `1.0.0`.
+4. Attach `manifest.json`, `main.js`, and `styles.css` as individual release assets.
+
+Do not attach or commit `data.json`, `node_modules`, or other local runtime files.
