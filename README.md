@@ -1,17 +1,19 @@
 # Easy Auto Correct
+Usually in Obsidian, correcting misspellings means hovering over each typo, opening the suggestion menu, and fixing words one at a time. I liked the Google Docs tool that scans the whole document and shows suggestions in one place letting me click away at the corrections, so I made a custom plugin to port that tool over to obsidian! 
+
+<img width="800" height="450" alt="before" src="https://github.com/user-attachments/assets/51352690-e392-49f5-bc59-07b56c6e264c" />
+<img width="800" height="450" alt="after" src="https://github.com/user-attachments/assets/672febcc-a617-4014-b14d-8681e859cafd" />
+
 
 Easy Auto Correct checks the current Obsidian note for spelling and grammar issues using a configurable LanguageTool endpoint.
 
 ## Endpoint options
-
 By default, the plugin uses the standard public LanguageTool API:
-
 ```text
 https://api.languagetool.org/v2/check
 ```
 
 You can change the endpoint in **Settings → Easy Auto Correct**:
-
 - **Standard public API**: Uses `https://api.languagetool.org`.
 - **Premium API**: Uses `https://api.languagetoolplus.com` with your username and API key.
 - **Local server**: Uses `http://localhost:8010`.
@@ -29,14 +31,13 @@ The plugin does not collect analytics, store telemetry, or send vault data in th
 
 ## Local server with Docker
 
-If you want to keep spellchecking local instead of using the public API, run LanguageTool as a separate local Docker container:
+If you want to keep spellchecking local and private instead of using the public API, run LanguageTool as a separate local Docker container:
 
 ```bash
 docker run --rm -p 8010:8010 silviof/docker-languagetool
 ```
 
 Then open **Settings → Easy Auto Correct** and select:
-
 ```text
 Endpoint: Local server
 Server URL: http://localhost:8010
