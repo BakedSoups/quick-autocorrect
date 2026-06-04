@@ -1,7 +1,7 @@
 {
 	"name": "better-auto-correct",
 	"version": "1.0.0",
-	"description": "Check spelling and grammar in Obsidian with a local LanguageTool server.",
+	"description": "Check spelling and grammar in Obsidian with a configurable LanguageTool endpoint.",
 	"main": "main.js",
 	"type": "module",
 	"scripts": {

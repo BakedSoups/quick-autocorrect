@@ -1,8 +1,56 @@
-/*
+.better-auto-correct-modal {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.better-auto-correct-count,
+.better-auto-correct-message,
+.better-auto-correct-empty {
+	margin: 0;
+}
 
-If your plugin does not need CSS, delete this file.
+.better-auto-correct-count {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
 
-*/
+.better-auto-correct-match {
+	margin: 0;
+	padding: 8px 10px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	background: var(--background-secondary);
+	font-size: var(--font-ui-medium);
+	line-height: 1.4;
+	overflow-wrap: anywhere;
+}
+
+.better-auto-correct-suggestions,
+.better-auto-correct-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.better-auto-correct-actions {
+	margin-top: 6px;
+	padding-top: 12px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.better-auto-correct-suggestion,
+.better-auto-correct-action {
+	width: auto;
+	min-width: 0;
+	height: 30px;
+	padding: 4px 10px;
+	line-height: 1;
+}
+
+.better-auto-correct-suggestion {
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}

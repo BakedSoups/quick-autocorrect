@@ -1,10 +1,28 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin } from "obsidian";
+import {
+	App,
+	Editor,
+	MarkdownView,
+	Modal,
+	Notice,
+	Plugin,
+	PluginSettingTab,
+	Setting,
+} from "obsidian";
 
-const LANGUAGE_TOOL_ENDPOINT = "http://localhost:8010/v2/check";
+const LOCAL_LANGUAGE_TOOL_URL = "http://localhost:8010";
+const STANDARD_LANGUAGE_TOOL_URL = "https://api.languagetool.org";
+const PREMIUM_LANGUAGE_TOOL_URL = "https://api.languagetoolplus.com";
 const MAX_REPLACEMENTS = 3;
+
+type EndpointMode = "standard" | "premium" | "local" | "custom";
 
 interface BetterAutoCorrectData {
 	customWords: string[];
+	endpointMode: EndpointMode;
+	serverUrl: string;
+	language: string;
+	username: string;
+	apiKey: string;
 }
 
 interface LanguageToolReplacement {
@@ -40,7 +58,139 @@ interface Issue {
 
 const DEFAULT_DATA: BetterAutoCorrectData = {
 	customWords: [],
+	endpointMode: "standard",
+	serverUrl: STANDARD_LANGUAGE_TOOL_URL,
+	language: "en-US",
+	username: "",
+	apiKey: "",
 };
+
+function getUrlForMode(mode: EndpointMode): string {
+	switch (mode) {
+		case "premium":
+			return PREMIUM_LANGUAGE_TOOL_URL;
+		case "local":
+			return LOCAL_LANGUAGE_TOOL_URL;
+		case "custom":
+			return "";
+		case "standard":
+			return STANDARD_LANGUAGE_TOOL_URL;
+	}
+}
+
+function normalizeServerUrl(url: string): string {
+	return url.trim().replace(/\/v2\/check\/?$/, "").replace(/\/$/, "");
+}
+
+class BetterAutoCorrectSettingTab extends PluginSettingTab {
+	constructor(app: App, private plugin: BetterAutoCorrect) {
+		super(app, plugin);
+	}
+
+	display(): void {
+		const { containerEl } = this;
+		containerEl.empty();
+
+		new Setting(containerEl).setName("Checking endpoint").setHeading();
+		containerEl.createEl("p", {
+			text: "The current note text is sent to the configured checking endpoint when you run a check.",
+		});
+
+		let customUrlSetting: Setting;
+		new Setting(containerEl)
+			.setName("Endpoint")
+			.setDesc("Choose where spelling and grammar checks are sent.")
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOptions({
+						standard: "Standard public API",
+						premium: "Premium API",
+						local: "Local server",
+						custom: "Custom URL",
+					})
+					.setValue(this.plugin.data.endpointMode)
+					.onChange(async (value) => {
+						const endpointMode = value as EndpointMode;
+						this.plugin.data.endpointMode = endpointMode;
+						const serverUrl = getUrlForMode(endpointMode);
+						if (serverUrl) {
+							this.plugin.data.serverUrl = serverUrl;
+						}
+						await this.plugin.savePluginData();
+						this.display();
+					});
+			});
+
+		customUrlSetting = new Setting(containerEl)
+			.setName("Server URL")
+			.setDesc("Use a base URL, without /v2/check.")
+			.addText((text) => {
+				text
+					.setPlaceholder("Server URL")
+					.setValue(this.plugin.data.serverUrl)
+					.onChange(async (value) => {
+						this.plugin.data.serverUrl = normalizeServerUrl(value);
+						this.plugin.data.endpointMode = "custom";
+						await this.plugin.savePluginData();
+					});
+			});
+
+		if (this.plugin.data.endpointMode !== "custom") {
+			customUrlSetting.descEl.createEl("br");
+			customUrlSetting.descEl.createSpan({
+				text: `Current: ${this.plugin.data.serverUrl}`,
+			});
+		}
+
+		new Setting(containerEl)
+			.setName("Language")
+			.setDesc("Use auto detection or a language code.")
+			.addText((text) => {
+				text
+					.setPlaceholder("Language")
+					.setValue(this.plugin.data.language)
+					.onChange(async (value) => {
+						this.plugin.data.language = value.trim() || "auto";
+						await this.plugin.savePluginData();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName("API username")
+			.setDesc("Only needed for premium.")
+			.addText((text) => {
+				text
+					.setPlaceholder("name@example.com")
+					.setValue(this.plugin.data.username)
+					.onChange(async (value) => {
+						this.plugin.data.username = value.trim();
+						await this.plugin.savePluginData();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName("API key")
+			.setDesc("Only needed for premium.")
+			.addText((text) => {
+				text
+					.setPlaceholder("Premium API key")
+					.setValue(this.plugin.data.apiKey)
+					.onChange(async (value) => {
+						this.plugin.data.apiKey = value.trim();
+						await this.plugin.savePluginData();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName("Test connection")
+			.setDesc("Send a short test sentence to the configured endpoint.")
+			.addButton((button) => {
+				button.setButtonText("Test").onClick(async () => {
+					await this.plugin.testLanguageToolConnection();
+				});
+			});
+	}
+}
 
 class SpellingGrammarModal extends Modal {
 	constructor(
@@ -62,26 +212,33 @@ class SpellingGrammarModal extends Modal {
 	private render() {
 		const { contentEl, titleEl } = this;
 		contentEl.empty();
+		contentEl.addClass("better-auto-correct-modal");
 
 		titleEl.setText(this.getTitle());
 
 		contentEl.createEl("p", {
+			cls: "better-auto-correct-count",
 			text: `Issue ${this.issueIndex + 1} of ${this.issueCount}`,
 		});
 
 		contentEl.createEl("h3", {
+			cls: "better-auto-correct-match",
 			text: this.issue.text,
 		});
 
 		contentEl.createEl("p", {
+			cls: "better-auto-correct-message",
 			text: this.issue.match.message,
 		});
 
 		const replacements = this.issue.match.replacements.slice(0, MAX_REPLACEMENTS);
 		if (replacements.length > 0) {
-			const suggestionContainer = contentEl.createDiv();
+			const suggestionContainer = contentEl.createDiv({
+				cls: "better-auto-correct-suggestions",
+			});
 			for (const replacement of replacements) {
 				const button = suggestionContainer.createEl("button", {
+					cls: "better-auto-correct-suggestion",
 					text: replacement.value,
 				});
 				button.addEventListener("click", () => {
@@ -92,13 +249,17 @@ class SpellingGrammarModal extends Modal {
 			}
 		} else {
 			contentEl.createEl("p", {
+				cls: "better-auto-correct-empty",
 				text: "No replacement suggestions available.",
 			});
 		}
 
-		const actionContainer = contentEl.createDiv();
+		const actionContainer = contentEl.createDiv({
+			cls: "better-auto-correct-actions",
+		});
 
 		const addButton = actionContainer.createEl("button", {
+			cls: "better-auto-correct-action",
 			// eslint-disable-next-line obsidianmd/ui/sentence-case
 			text: "Add to Dictionary",
 		});
@@ -109,6 +270,7 @@ class SpellingGrammarModal extends Modal {
 		});
 
 		const ignoreButton = actionContainer.createEl("button", {
+			cls: "better-auto-correct-action",
 			text: "Ignore",
 		});
 		ignoreButton.addEventListener("click", () => {
@@ -117,6 +279,7 @@ class SpellingGrammarModal extends Modal {
 		});
 
 		const nextButton = actionContainer.createEl("button", {
+			cls: "better-auto-correct-action",
 			text: "Next",
 		});
 		nextButton.addEventListener("click", () => {
@@ -125,6 +288,7 @@ class SpellingGrammarModal extends Modal {
 		});
 
 		const closeButton = actionContainer.createEl("button", {
+			cls: "better-auto-correct-action",
 			text: "Close",
 		});
 		closeButton.addEventListener("click", () => {
@@ -151,13 +315,14 @@ class SpellingGrammarModal extends Modal {
 }
 
 export default class BetterAutoCorrect extends Plugin {
-	private data: BetterAutoCorrectData = DEFAULT_DATA;
+	data: BetterAutoCorrectData = DEFAULT_DATA;
 	private issues: Issue[] = [];
 	private currentIssueIndex = 0;
 	private activeModal: SpellingGrammarModal | null = null;
 
 	async onload() {
 		await this.loadPluginData();
+		this.addSettingTab(new BetterAutoCorrectSettingTab(this.app, this));
 
 		this.addCommand({
 			id: "check-spelling-and-grammar",
@@ -202,6 +367,20 @@ export default class BetterAutoCorrect extends Plugin {
 		return this.app.workspace.getActiveViewOfType(MarkdownView)?.editor ?? null;
 	}
 
+	async savePluginData() {
+		await this.saveData(this.data);
+	}
+
+	async testLanguageToolConnection() {
+		try {
+			const response = await this.requestLanguageTool("This are a test sentence.");
+			new Notice(`LanguageTool connected: ${response.matches.length} issue found`);
+		} catch (error) {
+			console.error("LanguageTool connection test failed", error);
+			new Notice("Server connection failed. Check the endpoint settings.");
+		}
+	}
+
 	async addCustomWord(word: string) {
 		const normalizedWord = this.normalizeCustomWord(word);
 
@@ -243,10 +422,17 @@ export default class BetterAutoCorrect extends Plugin {
 
 	private async loadPluginData() {
 		const loadedData = (await this.loadData()) as Partial<BetterAutoCorrectData> | null;
+		const endpointMode = this.normalizeEndpointMode(loadedData?.endpointMode);
+		const defaultServerUrl = getUrlForMode(endpointMode) || DEFAULT_DATA.serverUrl;
 
 		this.data = {
 			...DEFAULT_DATA,
 			...loadedData,
+			endpointMode,
+			serverUrl: normalizeServerUrl(loadedData?.serverUrl || defaultServerUrl),
+			language: loadedData?.language?.trim() || DEFAULT_DATA.language,
+			username: loadedData?.username?.trim() || "",
+			apiKey: loadedData?.apiKey?.trim() || "",
 			customWords: Array.isArray(loadedData?.customWords)
 				? loadedData.customWords
 				: [],
@@ -276,19 +462,26 @@ export default class BetterAutoCorrect extends Plugin {
 			this.showCurrentIssue(editor);
 		} catch (error) {
 			console.error("LanguageTool check failed", error);
-			// eslint-disable-next-line obsidianmd/ui/sentence-case
-			new Notice("Could not reach LanguageTool at localhost:8010");
+			new Notice("Server connection failed. Check the endpoint settings.");
 		}
 	}
 
 	private async requestLanguageTool(text: string): Promise<LanguageToolResponse> {
 		const body = new URLSearchParams();
 		body.set("text", text);
-		body.set("language", "auto");
-		body.set("preferredVariants", "en-US");
+		body.set("language", this.data.language || "auto");
+		if (this.data.language === "auto") {
+			body.set("preferredVariants", "en-US");
+		}
+		if (this.data.username && this.data.apiKey) {
+			body.set("username", this.data.username);
+			body.set("apiKey", this.data.apiKey);
+		}
 
+		// LanguageTool's public API allows browser requests, and the original
+		// plugin requirement is to use fetch with URLSearchParams.
 		// eslint-disable-next-line no-restricted-globals
-		const response = await fetch(LANGUAGE_TOOL_ENDPOINT, {
+		const response = await fetch(this.getCheckUrl(), {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/x-www-form-urlencoded",
@@ -297,10 +490,16 @@ export default class BetterAutoCorrect extends Plugin {
 		});
 
 		if (!response.ok) {
+			const responseText = await response.text();
+			console.error("LanguageTool response body", responseText);
 			throw new Error(`LanguageTool returned ${response.status}`);
 		}
 
 		return (await response.json()) as LanguageToolResponse;
+	}
+
+	private getCheckUrl(): string {
+		return `${normalizeServerUrl(this.data.serverUrl)}/v2/check`;
 	}
 
 	private buildIssues(text: string, matches: LanguageToolMatch[]): Issue[] {
@@ -358,5 +557,18 @@ export default class BetterAutoCorrect extends Plugin {
 
 	private normalizeCustomWord(word: string): string {
 		return word.trim().toLowerCase();
+	}
+
+	private normalizeEndpointMode(mode: EndpointMode | undefined): EndpointMode {
+		if (
+			mode === "standard" ||
+			mode === "premium" ||
+			mode === "local" ||
+			mode === "custom"
+		) {
+			return mode;
+		}
+
+		return DEFAULT_DATA.endpointMode;
 	}
 }

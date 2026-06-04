@@ -1,43 +1,22 @@
-# Dependencies
-node_modules/
+# vscode
+.vscode 
 
-# Build output
+# Intellij
+*.iml
+.idea
+
+# npm
+node_modules
+
+# Don't include the compiled main.js file in the repo.
+# They should be uploaded to GitHub releases instead.
 main.js
-main.js.map
 
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# Exclude sourcemaps
+*.map
 
-# OS files
+# obsidian
+data.json
+
+# Exclude macOS Finder (System Explorer) View States
 .DS_Store
-Thumbs.db
-
-# IDEs
-.vscode/
-.idea/
-
-# TypeScript
-*.tsbuildinfo
-
-# Environment variables
-.env
-.env.*
-
-# Obsidian
-.obsidian/workspace.json
-
-# Testing
-coverage/
-
-# Temporary files
-*.tmp
-*.swp
-*.swo
-
-# LanguageTool local data (if you add any later)
-languagetool-data/
-
-# Package manager
-pnpm-lock.yaml
