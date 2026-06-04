@@ -1,9 +1,9 @@
 {
-	"id": "Better_Auto_Correct",
-	"name": "Better Auto Correct",
+	"id": "easy-auto-correct",
+	"name": "Easy Auto Correct",
 	"version": "1.0.0",
 	"minAppVersion": "1.0.0",
 	"description": "Check spelling and grammar in the current note with a configurable LanguageTool endpoint.",
-	"author": "Alex",
+	"author": "Alex Peczon",
 	"isDesktopOnly": false
 }

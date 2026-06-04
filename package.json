@@ -1,5 +1,5 @@
 {
-	"name": "better-auto-correct",
+	"name": "easy-auto-correct",
 	"version": "1.0.0",
 	"description": "Check spelling and grammar in Obsidian with a configurable LanguageTool endpoint.",
 	"main": "main.js",

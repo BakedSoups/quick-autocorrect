@@ -1,6 +1,6 @@
-# Better Auto Correct
+# Easy Auto Correct
 
-Better Auto Correct checks the current Obsidian note for spelling and grammar issues using a configurable LanguageTool endpoint.
+Easy Auto Correct checks the current Obsidian note for spelling and grammar issues using a configurable LanguageTool endpoint.
 
 ## Endpoint options
 
@@ -10,7 +10,8 @@ By default, the plugin uses the standard public LanguageTool API:
 https://api.languagetool.org/v2/check
 ```
 
-You can change this in **Settings → Better Auto Correct**:
+if you want a more private/offline set up you can change this in **Settings → Easy Auto Correct**:
+
 
 - **Standard public API**: Uses `https://api.languagetool.org`.
 - **Premium API**: Uses `https://api.languagetoolplus.com` with your username and API key.
