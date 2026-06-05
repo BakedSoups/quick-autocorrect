@@ -178,33 +178,33 @@ class SpellingGrammarModal extends Modal {
 	private render() {
 		const { contentEl, titleEl } = this;
 		contentEl.empty();
-		contentEl.addClass("easy-auto-correct-modal");
+		contentEl.addClass("quick-autocorrect-modal");
 
 		titleEl.setText(this.getTitle());
 
 		contentEl.createEl("p", {
-			cls: "easy-auto-correct-count",
+			cls: "quick-autocorrect-count",
 			text: `Issue ${this.issueIndex + 1} of ${this.issueCount}`,
 		});
 
 		contentEl.createEl("h3", {
-			cls: "easy-auto-correct-match",
+			cls: "quick-autocorrect-match",
 			text: this.issue.text,
 		});
 
 		contentEl.createEl("p", {
-			cls: "easy-auto-correct-message",
+			cls: "quick-autocorrect-message",
 			text: this.issue.match.message,
 		});
 
 		const replacements = this.issue.match.replacements.slice(0, MAX_REPLACEMENTS);
 		if (replacements.length > 0) {
 			const suggestionContainer = contentEl.createDiv({
-				cls: "easy-auto-correct-suggestions",
+				cls: "quick-autocorrect-suggestions",
 			});
 			for (const replacement of replacements) {
 				const button = suggestionContainer.createEl("button", {
-					cls: "easy-auto-correct-suggestion",
+					cls: "quick-autocorrect-suggestion",
 					text: replacement.value,
 				});
 				button.addEventListener("click", () => {
@@ -215,17 +215,17 @@ class SpellingGrammarModal extends Modal {
 			}
 		} else {
 			contentEl.createEl("p", {
-				cls: "easy-auto-correct-empty",
+				cls: "quick-autocorrect-empty",
 				text: "No replacement suggestions available.",
 			});
 		}
 
 		const actionContainer = contentEl.createDiv({
-			cls: "easy-auto-correct-actions",
+			cls: "quick-autocorrect-actions",
 		});
 
 		const addButton = actionContainer.createEl("button", {
-			cls: "easy-auto-correct-action",
+			cls: "quick-autocorrect-action",
 			text: "Add to dictionary",
 		});
 		addButton.addEventListener("click", () => {
@@ -235,7 +235,7 @@ class SpellingGrammarModal extends Modal {
 		});
 
 		const ignoreButton = actionContainer.createEl("button", {
-			cls: "easy-auto-correct-action",
+			cls: "quick-autocorrect-action",
 			text: "Ignore",
 		});
 		ignoreButton.addEventListener("click", () => {
@@ -244,7 +244,7 @@ class SpellingGrammarModal extends Modal {
 		});
 
 		const nextButton = actionContainer.createEl("button", {
-			cls: "easy-auto-correct-action",
+			cls: "quick-autocorrect-action",
 			text: "Next",
 		});
 		nextButton.addEventListener("click", () => {
@@ -253,7 +253,7 @@ class SpellingGrammarModal extends Modal {
 		});
 
 		const closeButton = actionContainer.createEl("button", {
-			cls: "easy-auto-correct-action",
+			cls: "quick-autocorrect-action",
 			text: "Close",
 		});
 		closeButton.addEventListener("click", () => {

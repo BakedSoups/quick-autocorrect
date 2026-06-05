@@ -1,21 +1,21 @@
-.easy-auto-correct-modal {
+.quick-autocorrect-modal {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
 }
 
-.easy-auto-correct-count,
-.easy-auto-correct-message,
-.easy-auto-correct-empty {
+.quick-autocorrect-count,
+.quick-autocorrect-message,
+.quick-autocorrect-empty {
 	margin: 0;
 }
 
-.easy-auto-correct-count {
+.quick-autocorrect-count {
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 }
 
-.easy-auto-correct-match {
+.quick-autocorrect-match {
 	margin: 0;
 	padding: 8px 10px;
 	border: 1px solid var(--background-modifier-border);
@@ -26,21 +26,21 @@
 	overflow-wrap: anywhere;
 }
 
-.easy-auto-correct-suggestions,
-.easy-auto-correct-actions {
+.quick-autocorrect-suggestions,
+.quick-autocorrect-actions {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 8px;
 }
 
-.easy-auto-correct-actions {
+.quick-autocorrect-actions {
 	margin-top: 6px;
 	padding-top: 12px;
 	border-top: 1px solid var(--background-modifier-border);
 }
 
-.easy-auto-correct-suggestion,
-.easy-auto-correct-action {
+.quick-autocorrect-suggestion,
+.quick-autocorrect-action {
 	width: auto;
 	min-width: 0;
 	height: 30px;
@@ -48,7 +48,7 @@
 	line-height: 1;
 }
 
-.easy-auto-correct-suggestion {
+.quick-autocorrect-suggestion {
 	max-width: 100%;
 	overflow: hidden;
 	text-overflow: ellipsis;

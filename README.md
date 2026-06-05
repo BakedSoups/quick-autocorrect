@@ -1,11 +1,11 @@
-# Easy Auto Correct
+# Quick Autocorrect
 Usually in Obsidian, correcting misspellings means hovering over each typo, opening the suggestion menu, and fixing words one at a time. I liked the Google Docs tool that scans the whole document and shows suggestions in one place letting me click away at the corrections, so I made a custom plugin to port that tool over to obsidian! 
 
 <img width="800" height="450" alt="before" src="https://github.com/user-attachments/assets/51352690-e392-49f5-bc59-07b56c6e264c" />
 <img width="800" height="450" alt="after" src="https://github.com/user-attachments/assets/672febcc-a617-4014-b14d-8681e859cafd" />
 
 
-Easy Auto Correct reviews spelling and grammar issues in the current note from a Google Docs-style suggestion menu.
+Quick Autocorrect reviews spelling and grammar issues in the current note from a Google Docs-style suggestion menu.
 
 ## Endpoint options
 By default, the plugin uses the standard public LanguageTool API:
@@ -13,7 +13,7 @@ By default, the plugin uses the standard public LanguageTool API:
 https://api.languagetool.org/v2/check
 ```
 
-You can change the endpoint in **Settings → Easy Auto Correct**:
+You can change the endpoint in **Settings → Quick Autocorrect**:
 - **Standard public API**: Uses `https://api.languagetool.org`.
 - **Local server**: Uses `http://127.0.0.1:8010`.
 - **Custom URL**: Uses any LanguageTool-compatible base URL.
@@ -24,7 +24,7 @@ The plugin does not use Electron spellcheck, cspell, typo-js, nspell, or bundled
 
 ## Privacy
 
-Easy Auto Correct sends the current note text to the endpoint selected in settings only when you run a check. The default endpoint is the standard public LanguageTool API. To avoid sending note text to a public service, run a local or self-hosted LanguageTool server and select **Local server** or **Custom URL**.
+Quick Autocorrect sends the current note text to the endpoint selected in settings only when you run a check. The default endpoint is the standard public LanguageTool API. To avoid sending note text to a public service, run a local or self-hosted LanguageTool server and select **Local server** or **Custom URL**.
 
 The plugin does not collect analytics, store telemetry, or send vault data in the background.
 
@@ -36,7 +36,7 @@ If you want to keep spellchecking local and private instead of using the public 
 docker run --rm -p 8010:8010 silviof/docker-languagetool
 ```
 
-Then open **Settings → Easy Auto Correct** and select:
+Then open **Settings → Quick Autocorrect** and select:
 ```text
 Endpoint: Local server
 Server URL: http://127.0.0.1:8010
