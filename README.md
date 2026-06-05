@@ -15,8 +15,7 @@ https://api.languagetool.org/v2/check
 
 You can change the endpoint in **Settings → Easy Auto Correct**:
 - **Standard public API**: Uses `https://api.languagetool.org`.
-- **Premium API**: Uses `https://api.languagetoolplus.com` with your username and API key.
-- **Local server**: Uses `http://localhost:8010`.
+- **Local server**: Uses `http://127.0.0.1:8010`.
 - **Custom URL**: Uses any LanguageTool-compatible base URL.
 
 When you run the checker, the current note text is sent to the configured endpoint. This plugin does not install, bundle, or manage a LanguageTool server.
@@ -40,10 +39,10 @@ docker run --rm -p 8010:8010 silviof/docker-languagetool
 Then open **Settings → Easy Auto Correct** and select:
 ```text
 Endpoint: Local server
-Server URL: http://localhost:8010
+Server URL: http://127.0.0.1:8010
 ```
 
-The plugin sends requests to `http://localhost:8010/v2/check`. The Docker container is not part of this repository or the Obsidian plugin release.
+The plugin sends requests to `http://127.0.0.1:8010/v2/check`. The Docker container is not part of this repository or the Obsidian plugin release.
 
 ## Commands
 

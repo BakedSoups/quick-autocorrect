@@ -10,20 +10,17 @@ import {
 	Setting,
 } from "obsidian";
 
-const LOCAL_LANGUAGE_TOOL_URL = "http://localhost:8010";
+const LOCAL_LANGUAGE_TOOL_URL = "http://127.0.0.1:8010";
 const STANDARD_LANGUAGE_TOOL_URL = "https://api.languagetool.org";
-const PREMIUM_LANGUAGE_TOOL_URL = "https://api.languagetoolplus.com";
 const MAX_REPLACEMENTS = 3;
 
-type EndpointMode = "standard" | "premium" | "local" | "custom";
+type EndpointMode = "standard" | "local" | "custom";
 
 interface EasyAutoCorrectData {
 	customWords: string[];
 	endpointMode: EndpointMode;
 	serverUrl: string;
 	language: string;
-	username: string;
-	apiKey: string;
 }
 
 interface LanguageToolReplacement {
@@ -62,14 +59,10 @@ const DEFAULT_DATA: EasyAutoCorrectData = {
 	endpointMode: "standard",
 	serverUrl: STANDARD_LANGUAGE_TOOL_URL,
 	language: "en-US",
-	username: "",
-	apiKey: "",
 };
 
 function getUrlForMode(mode: EndpointMode): string {
 	switch (mode) {
-		case "premium":
-			return PREMIUM_LANGUAGE_TOOL_URL;
 		case "local":
 			return LOCAL_LANGUAGE_TOOL_URL;
 		case "custom":
@@ -105,7 +98,6 @@ class EasyAutoCorrectSettingTab extends PluginSettingTab {
 				dropdown
 					.addOptions({
 						standard: "Standard public API",
-						premium: "Premium API",
 						local: "Local server",
 						custom: "Custom URL",
 					})
@@ -151,32 +143,6 @@ class EasyAutoCorrectSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.data.language)
 					.onChange(async (value) => {
 						this.plugin.data.language = value.trim() || "auto";
-						await this.plugin.savePluginData();
-					});
-			});
-
-		new Setting(containerEl)
-			.setName("API username")
-			.setDesc("Only needed for premium.")
-			.addText((text) => {
-				text
-					.setPlaceholder("name@example.com")
-					.setValue(this.plugin.data.username)
-					.onChange(async (value) => {
-						this.plugin.data.username = value.trim();
-						await this.plugin.savePluginData();
-					});
-			});
-
-		new Setting(containerEl)
-			.setName("API key")
-			.setDesc("Only needed for premium.")
-			.addText((text) => {
-				text
-					.setPlaceholder("Premium API key")
-					.setValue(this.plugin.data.apiKey)
-					.onChange(async (value) => {
-						this.plugin.data.apiKey = value.trim();
 						await this.plugin.savePluginData();
 					});
 			});
@@ -376,8 +342,12 @@ export default class EasyAutoCorrect extends Plugin {
 			new Notice(`LanguageTool connected: ${response.matches.length} issue found`);
 		} catch (error) {
 			console.error("LanguageTool connection test failed", error);
-			new Notice("Server connection failed. Check the endpoint settings.");
+			new Notice(`Server connection failed: ${this.getErrorMessage(error)}`);
 		}
+	}
+
+	private getErrorMessage(error: unknown): string {
+		return error instanceof Error ? error.message : String(error);
 	}
 
 	async addCustomWord(word: string) {
@@ -428,10 +398,12 @@ export default class EasyAutoCorrect extends Plugin {
 			...DEFAULT_DATA,
 			...loadedData,
 			endpointMode,
-			serverUrl: normalizeServerUrl(loadedData?.serverUrl || defaultServerUrl),
+			serverUrl: normalizeServerUrl(
+				endpointMode === "custom"
+					? loadedData?.serverUrl || defaultServerUrl
+					: defaultServerUrl
+			),
 			language: loadedData?.language?.trim() || DEFAULT_DATA.language,
-			username: loadedData?.username?.trim() || "",
-			apiKey: loadedData?.apiKey?.trim() || "",
 			customWords: Array.isArray(loadedData?.customWords)
 				? loadedData.customWords
 				: [],
@@ -461,7 +433,7 @@ export default class EasyAutoCorrect extends Plugin {
 			this.showCurrentIssue(editor);
 		} catch (error) {
 			console.error("LanguageTool check failed", error);
-			new Notice("Server connection failed. Check the endpoint settings.");
+			new Notice(`Server connection failed: ${this.getErrorMessage(error)}`);
 		}
 	}
 
@@ -472,18 +444,22 @@ export default class EasyAutoCorrect extends Plugin {
 		if (this.data.language === "auto") {
 			body.set("preferredVariants", "en-US");
 		}
-		if (this.data.username && this.data.apiKey) {
-			body.set("username", this.data.username);
-			body.set("apiKey", this.data.apiKey);
-		}
 
-		const response = await requestUrl({
-			url: this.getCheckUrl(),
-			method: "POST",
-			contentType: "application/x-www-form-urlencoded",
-			body: body.toString(),
-			throw: false,
-		});
+		const checkUrl = this.getCheckUrl();
+		const bodyText = body.toString();
+
+		let response;
+		try {
+			response = await requestUrl({
+				url: checkUrl,
+				method: "POST",
+				contentType: "application/x-www-form-urlencoded",
+				body: bodyText,
+				throw: false,
+			});
+		} catch (error) {
+			throw new Error(`Could not reach ${checkUrl}: ${this.getErrorMessage(error)}`);
+		}
 
 		if (response.status < 200 || response.status >= 300) {
 			console.error("LanguageTool response body", response.text);
@@ -557,7 +533,6 @@ export default class EasyAutoCorrect extends Plugin {
 	private normalizeEndpointMode(mode: string | undefined): EndpointMode {
 		if (
 			mode === "standard" ||
-			mode === "premium" ||
 			mode === "local" ||
 			mode === "custom"
 		) {
