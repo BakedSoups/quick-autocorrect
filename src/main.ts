@@ -6,6 +6,7 @@ import {
 	Notice,
 	Plugin,
 	PluginSettingTab,
+	requestUrl,
 	Setting,
 } from "obsidian";
 
@@ -117,7 +118,6 @@ class EasyAutoCorrectSettingTab extends PluginSettingTab {
 							this.plugin.data.serverUrl = serverUrl;
 						}
 						await this.plugin.savePluginData();
-						this.display();
 					});
 			});
 
@@ -260,8 +260,7 @@ class SpellingGrammarModal extends Modal {
 
 		const addButton = actionContainer.createEl("button", {
 			cls: "easy-auto-correct-action",
-			// eslint-disable-next-line obsidianmd/ui/sentence-case
-			text: "Add to Dictionary",
+			text: "Add to dictionary",
 		});
 		addButton.addEventListener("click", () => {
 			void this.plugin.addCustomWord(this.issue.text);
@@ -478,24 +477,20 @@ export default class EasyAutoCorrect extends Plugin {
 			body.set("apiKey", this.data.apiKey);
 		}
 
-		// LanguageTool's public API allows browser requests, and the original
-		// plugin requirement is to use fetch with URLSearchParams.
-		// eslint-disable-next-line no-restricted-globals
-		const response = await fetch(this.getCheckUrl(), {
+		const response = await requestUrl({
+			url: this.getCheckUrl(),
 			method: "POST",
-			headers: {
-				"Content-Type": "application/x-www-form-urlencoded",
-			},
-			body,
+			contentType: "application/x-www-form-urlencoded",
+			body: body.toString(),
+			throw: false,
 		});
 
-		if (!response.ok) {
-			const responseText = await response.text();
-			console.error("LanguageTool response body", responseText);
-			throw new Error(`LanguageTool returned ${response.status}`);
+		if (response.status < 200 || response.status >= 300) {
+			console.error("LanguageTool response body", response.text);
+			throw new Error("LanguageTool returned " + response.status);
 		}
 
-		return (await response.json()) as LanguageToolResponse;
+		return response.json as LanguageToolResponse;
 	}
 
 	private getCheckUrl(): string {
