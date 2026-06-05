@@ -1,6 +1,6 @@
 {
 	"name": "quick-autocorrect",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "Review spelling and grammar issues in Obsidian from a Google Docs-style suggestion menu.",
 	"main": "main.js",
 	"type": "module",

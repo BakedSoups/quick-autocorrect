@@ -1,7 +1,7 @@
 {
 	"id": "quick-autocorrect",
 	"name": "Quick Autocorrect",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "1.0.0",
 	"description": "Review spelling and grammar issues in the current note from a Google Docs-style suggestion menu.",
 	"author": "Alex Peczon",
