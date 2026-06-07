@@ -1,7 +1,9 @@
 # Quick Autocorrect
 Usually in Obsidian, correcting misspellings means hovering over each typo, opening the suggestion menu, and fixing words one at a time. I liked the Google Docs tool that scans the whole document and shows suggestions in one place letting me click away at the corrections, so I made a custom plugin to port that tool over to obsidian! 
-<img width="800" height="450" alt="before" src="https://github.com/user-attachments/assets/e993cad7-b8d3-46c8-82a0-b943d4d04788" />
-<img width="1920" height="1080" alt="AFTER" src="https://github.com/user-attachments/assets/3c9d2c92-1b3d-48f7-9af3-88209cb7bdff" />
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/e993cad7-b8d3-46c8-82a0-b943d4d04788" width="48%" />
+  <img src="https://github.com/user-attachments/assets/3c9d2c92-1b3d-48f7-9af3-88209cb7bdff" width="48%" />
+</p>
 
 
 
