@@ -10,9 +10,13 @@ import {
 	Setting,
 } from "obsidian";
 
+declare const require: ((moduleName: string) => unknown) | undefined;
+
 const LOCAL_LANGUAGE_TOOL_URL = "http://127.0.0.1:8010";
 const STANDARD_LANGUAGE_TOOL_URL = "https://api.languagetool.org";
 const MAX_REPLACEMENTS = 3;
+
+type NodeRequestFunction = typeof import("node:https").request;
 
 type EndpointMode = "standard" | "local" | "custom";
 
@@ -48,10 +52,22 @@ interface LanguageToolResponse {
 	matches: LanguageToolMatch[];
 }
 
+interface LanguageToolHttpResponse {
+	status: number;
+	text: string;
+	json: unknown;
+}
+
 interface Issue {
 	match: LanguageToolMatch;
 	text: string;
 	offset: number;
+}
+
+interface SentenceContext {
+	before: string;
+	match: string;
+	after: string;
 }
 
 const DEFAULT_DATA: EasyAutoCorrectData = {
@@ -159,6 +175,8 @@ class EasyAutoCorrectSettingTab extends PluginSettingTab {
 }
 
 class SpellingGrammarModal extends Modal {
+	private contextPreviewEl: HTMLElement | null = null;
+
 	constructor(
 		app: App,
 		private plugin: EasyAutoCorrect,
@@ -197,6 +215,11 @@ class SpellingGrammarModal extends Modal {
 			text: this.issue.match.message,
 		});
 
+		this.contextPreviewEl = contentEl.createDiv({
+			cls: "quick-autocorrect-context",
+		});
+		this.renderContextPreview();
+
 		const replacements = this.issue.match.replacements.slice(0, MAX_REPLACEMENTS);
 		if (replacements.length > 0) {
 			const suggestionContainer = contentEl.createDiv({
@@ -206,6 +229,18 @@ class SpellingGrammarModal extends Modal {
 				const button = suggestionContainer.createEl("button", {
 					cls: "quick-autocorrect-suggestion",
 					text: replacement.value,
+				});
+				button.addEventListener("mouseenter", () => {
+					this.renderContextPreview(replacement.value);
+				});
+				button.addEventListener("mouseleave", () => {
+					this.renderContextPreview();
+				});
+				button.addEventListener("focus", () => {
+					this.renderContextPreview(replacement.value);
+				});
+				button.addEventListener("blur", () => {
+					this.renderContextPreview();
 				});
 				button.addEventListener("click", () => {
 					this.replaceIssue(replacement.value);
@@ -261,6 +296,97 @@ class SpellingGrammarModal extends Modal {
 		});
 	}
 
+	private renderContextPreview(replacement?: string) {
+		if (!this.contextPreviewEl) {
+			return;
+		}
+
+		const context = this.getSentenceContext(replacement);
+		this.contextPreviewEl.empty();
+
+		if (context.before) {
+			this.contextPreviewEl.createSpan({ text: context.before });
+		}
+
+		this.contextPreviewEl.createSpan({
+			cls: replacement
+				? "quick-autocorrect-context-replacement"
+				: "quick-autocorrect-context-match",
+			text: context.match,
+		});
+
+		if (context.after) {
+			this.contextPreviewEl.createSpan({ text: context.after });
+		}
+	}
+
+	private getSentenceContext(replacement?: string): SentenceContext {
+		const text = this.editor.getValue();
+		const matchStart = Math.max(0, Math.min(this.issue.offset, text.length));
+		const matchEnd = Math.max(
+			matchStart,
+			Math.min(matchStart + this.issue.match.length, text.length)
+		);
+		const sentenceStart = this.findSentenceStart(text, matchStart);
+		const sentenceEnd = this.findSentenceEnd(text, matchEnd);
+
+		return {
+			before: text.slice(sentenceStart, matchStart),
+			match: replacement ?? text.slice(matchStart, matchEnd),
+			after: text.slice(matchEnd, sentenceEnd),
+		};
+	}
+
+	private findSentenceStart(text: string, offset: number): number {
+		let index = offset - 1;
+
+		while (index >= 0) {
+			const character = text[index];
+			if (character === "\n") {
+				return this.skipLeadingWhitespace(text, index + 1, offset);
+			}
+			if (character && /[.!?]/.test(character)) {
+				return this.skipLeadingWhitespace(text, index + 1, offset);
+			}
+			index -= 1;
+		}
+
+		return this.skipLeadingWhitespace(text, 0, offset);
+	}
+
+	private findSentenceEnd(text: string, offset: number): number {
+		let index = offset;
+
+		while (index < text.length) {
+			const character = text[index];
+			if (character === "\n") {
+				return this.trimTrailingWhitespace(text, offset, index);
+			}
+			if (character && /[.!?]/.test(character)) {
+				return this.trimTrailingWhitespace(text, offset, index + 1);
+			}
+			index += 1;
+		}
+
+		return this.trimTrailingWhitespace(text, offset, text.length);
+	}
+
+	private skipLeadingWhitespace(text: string, start: number, max: number): number {
+		let index = start;
+		while (index < max && /\s/.test(text[index] ?? "")) {
+			index += 1;
+		}
+		return index;
+	}
+
+	private trimTrailingWhitespace(text: string, min: number, end: number): number {
+		let index = end;
+		while (index > min && /\s/.test(text[index - 1] ?? "")) {
+			index -= 1;
+		}
+		return index;
+	}
+
 	private getTitle(): string {
 		return this.plugin.isMisspelling(this.issue.match)
 			? "Misspelling found"
@@ -284,6 +410,7 @@ export default class EasyAutoCorrect extends Plugin {
 	private issues: Issue[] = [];
 	private currentIssueIndex = 0;
 	private activeModal: SpellingGrammarModal | null = null;
+	private lastLanguageToolErrorLogKey: string | null = null;
 
 	async onload() {
 		await this.loadPluginData();
@@ -339,15 +466,65 @@ export default class EasyAutoCorrect extends Plugin {
 	async testLanguageToolConnection() {
 		try {
 			const response = await this.requestLanguageTool("This are a test sentence.");
+			this.lastLanguageToolErrorLogKey = null;
 			new Notice(`LanguageTool connected: ${response.matches.length} issue found`);
 		} catch (error) {
-			console.error("LanguageTool connection test failed", error);
-			new Notice(`Server connection failed: ${this.getErrorMessage(error)}`);
+			this.reportLanguageToolFailure("LanguageTool connection test failed", error);
 		}
 	}
 
 	private getErrorMessage(error: unknown): string {
 		return error instanceof Error ? error.message : String(error);
+	}
+
+	private reportLanguageToolFailure(action: string, error: unknown) {
+		const message = this.getLanguageToolFailureMessage(error);
+		const logKey = `${action}: ${message}`;
+
+		if (this.lastLanguageToolErrorLogKey !== logKey) {
+			console.error(action, error);
+			this.lastLanguageToolErrorLogKey = logKey;
+		}
+
+		new Notice(`${action}: ${message}`, 12000);
+	}
+
+	private getLanguageToolFailureMessage(error: unknown): string {
+		const message = this.getErrorMessage(error);
+		const checkUrl = this.getCheckUrl();
+
+		if (message.includes("net::ERR_FAILED")) {
+			return `Obsidian could not reach ${checkUrl}. Check internet access, VPN/firewall/proxy settings, or use a local/custom LanguageTool server.`;
+		}
+
+		if (
+			message.includes("ERR_NAME_NOT_RESOLVED") ||
+			message.includes("ENOTFOUND") ||
+			message.includes("Could not resolve")
+		) {
+			return `Could not resolve ${this.getCheckHost(checkUrl)}. Check DNS or use a local/custom LanguageTool server.`;
+		}
+
+		if (
+			message.includes("ERR_CONNECTION_REFUSED") ||
+			message.includes("ECONNREFUSED")
+		) {
+			return `Connection refused by ${checkUrl}. If this is a local server, confirm LanguageTool is running.`;
+		}
+
+		if (message.includes("ERR_CERT") || message.includes("certificate")) {
+			return `TLS certificate check failed for ${checkUrl}. Check the server certificate or custom URL.`;
+		}
+
+		return message;
+	}
+
+	private getCheckHost(checkUrl: string): string {
+		try {
+			return new URL(checkUrl).hostname;
+		} catch {
+			return checkUrl;
+		}
 	}
 
 	async addCustomWord(word: string) {
@@ -422,6 +599,7 @@ export default class EasyAutoCorrect extends Plugin {
 
 		try {
 			const response = await this.requestLanguageTool(text);
+			this.lastLanguageToolErrorLogKey = null;
 			this.issues = this.buildIssues(text, response.matches);
 			this.currentIssueIndex = 0;
 
@@ -432,8 +610,7 @@ export default class EasyAutoCorrect extends Plugin {
 
 			this.showCurrentIssue(editor);
 		} catch (error) {
-			console.error("LanguageTool check failed", error);
-			new Notice(`Server connection failed: ${this.getErrorMessage(error)}`);
+			this.reportLanguageToolFailure("LanguageTool check failed", error);
 		}
 	}
 
@@ -448,7 +625,7 @@ export default class EasyAutoCorrect extends Plugin {
 		const checkUrl = this.getCheckUrl();
 		const bodyText = body.toString();
 
-		let response;
+		let response: LanguageToolHttpResponse;
 		try {
 			response = await requestUrl({
 				url: checkUrl,
@@ -458,15 +635,112 @@ export default class EasyAutoCorrect extends Plugin {
 				throw: false,
 			});
 		} catch (error) {
-			throw new Error(`Could not reach ${checkUrl}: ${this.getErrorMessage(error)}`);
+			if (this.shouldRetryWithNodeRequest(error)) {
+				response = await this.requestLanguageToolWithNode(checkUrl, bodyText);
+			} else {
+				throw new Error(`Could not reach ${checkUrl}: ${this.getErrorMessage(error)}`);
+			}
 		}
 
+		return this.parseLanguageToolResponse(checkUrl, response);
+	}
+
+	private shouldRetryWithNodeRequest(error: unknown): boolean {
+		return this.getErrorMessage(error).includes("net::ERR_FAILED");
+	}
+
+	private async requestLanguageToolWithNode(
+		checkUrl: string,
+		bodyText: string
+	): Promise<LanguageToolHttpResponse> {
+		const request = this.getNodeRequest(checkUrl);
+
+		if (!request) {
+			throw new Error(
+				`Could not reach ${checkUrl}: Obsidian requestUrl failed and Node HTTP is unavailable`
+			);
+		}
+
+		return new Promise((resolve, reject) => {
+			const url = new URL(checkUrl);
+			const bodyLength = new TextEncoder().encode(bodyText).byteLength;
+			const req = request(
+				url,
+				{
+					method: "POST",
+					headers: {
+						"Content-Type": "application/x-www-form-urlencoded",
+						"Content-Length": String(bodyLength),
+						"User-Agent": "Obsidian Easy AutoCorrect",
+					},
+					timeout: 30000,
+				},
+				(res) => {
+					const chunks: string[] = [];
+					res.setEncoding("utf8");
+					res.on("data", (chunk: string) => chunks.push(chunk));
+					res.on("end", () => {
+						const text = chunks.join("");
+						let json: unknown;
+						try {
+							json = JSON.parse(text);
+						} catch {
+							json = null;
+						}
+
+						resolve({
+							status: res.statusCode ?? 0,
+							text,
+							json,
+						});
+					});
+				}
+			);
+
+			req.on("error", reject);
+			req.on("timeout", () => {
+				req.destroy(new Error(`Timed out reaching ${checkUrl}`));
+			});
+			req.write(bodyText);
+			req.end();
+		});
+	}
+
+	private getNodeRequest(checkUrl: string): NodeRequestFunction | null {
+		if (typeof require !== "function") {
+			return null;
+		}
+
+		const protocol = new URL(checkUrl).protocol;
+		const moduleName = protocol === "http:" ? "node:http" : "node:https";
+		const module = require(moduleName) as { request?: NodeRequestFunction };
+
+		return module.request ?? null;
+	}
+
+	private parseLanguageToolResponse(
+		checkUrl: string,
+		response: LanguageToolHttpResponse
+	): LanguageToolResponse {
 		if (response.status < 200 || response.status >= 300) {
 			console.error("LanguageTool response body", response.text);
 			throw new Error("LanguageTool returned " + response.status);
 		}
 
-		return response.json as LanguageToolResponse;
+		if (!this.isLanguageToolResponse(response.json)) {
+			console.error("LanguageTool response body", response.text);
+			throw new Error(`LanguageTool returned an invalid response from ${checkUrl}`);
+		}
+
+		return response.json;
+	}
+
+	private isLanguageToolResponse(json: unknown): json is LanguageToolResponse {
+		return (
+			typeof json === "object" &&
+			json !== null &&
+			Array.isArray((json as Partial<LanguageToolResponse>).matches)
+		);
 	}
 
 	private getCheckUrl(): string {
@@ -504,6 +778,7 @@ export default class EasyAutoCorrect extends Plugin {
 			return;
 		}
 
+		this.revealIssueInEditor(editor, issue);
 		this.activeModal?.close();
 		this.activeModal = new SpellingGrammarModal(
 			this.app,
@@ -518,6 +793,20 @@ export default class EasyAutoCorrect extends Plugin {
 			}
 		);
 		this.activeModal.open();
+	}
+
+	private revealIssueInEditor(editor: Editor, issue: Issue) {
+		const textLength = editor.getValue().length;
+		const fromOffset = Math.max(0, Math.min(issue.offset, textLength));
+		const toOffset = Math.max(
+			fromOffset,
+			Math.min(issue.offset + issue.match.length, textLength)
+		);
+		const from = editor.offsetToPos(fromOffset);
+		const to = editor.offsetToPos(toOffset);
+
+		editor.scrollIntoView({ from, to }, true);
+		editor.setSelection(from, to);
 	}
 
 	private resetSession() {

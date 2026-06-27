@@ -26,6 +26,35 @@
 	overflow-wrap: anywhere;
 }
 
+.quick-autocorrect-context {
+	padding: 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	background: var(--background-primary-alt);
+	color: var(--text-normal);
+	font-size: var(--font-ui-medium);
+	line-height: 1.6;
+	overflow-wrap: anywhere;
+	white-space: pre-wrap;
+}
+
+.quick-autocorrect-context-match,
+.quick-autocorrect-context-replacement {
+	padding: 1px 3px;
+	border-radius: 4px;
+	font-weight: var(--font-semibold);
+}
+
+.quick-autocorrect-context-match {
+	background: var(--background-modifier-error);
+	color: var(--text-normal);
+}
+
+.quick-autocorrect-context-replacement {
+	background: var(--background-modifier-success);
+	color: var(--text-normal);
+}
+
 .quick-autocorrect-suggestions,
 .quick-autocorrect-actions {
 	display: flex;
