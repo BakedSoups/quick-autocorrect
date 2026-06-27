@@ -70,6 +70,11 @@ interface SentenceContext {
 	after: string;
 }
 
+interface TextRange {
+	start: number;
+	end: number;
+}
+
 const DEFAULT_DATA: EasyAutoCorrectData = {
 	customWords: [],
 	endpointMode: "standard",
@@ -751,6 +756,7 @@ export default class EasyAutoCorrect extends Plugin {
 		const customWords = new Set(
 			this.data.customWords.map((word) => this.normalizeCustomWord(word))
 		);
+		const ignoredRanges = this.getLatexRanges(text);
 
 		return matches
 			.map((match) => ({
@@ -760,8 +766,125 @@ export default class EasyAutoCorrect extends Plugin {
 			}))
 			.filter((issue) => {
 				const normalizedText = this.normalizeCustomWord(issue.text);
-				return normalizedText && !customWords.has(normalizedText);
+				return (
+					normalizedText &&
+					!customWords.has(normalizedText) &&
+					!this.isRangeIgnored(
+						issue.offset,
+						issue.offset + issue.match.length,
+						ignoredRanges
+					)
+				);
 			});
+	}
+
+	private getLatexRanges(text: string): TextRange[] {
+		const ranges: TextRange[] = [];
+		let index = 0;
+
+		while (index < text.length) {
+			const delimiter = this.getLatexOpeningDelimiter(text, index);
+			if (!delimiter) {
+				index += 1;
+				continue;
+			}
+
+			const closingIndex = this.findLatexClosingDelimiter(
+				text,
+				index + delimiter.open.length,
+				delimiter.close
+			);
+			if (closingIndex === -1) {
+				index += delimiter.open.length;
+				continue;
+			}
+
+			const end = closingIndex + delimiter.close.length;
+			ranges.push({ start: index, end });
+			index = end;
+		}
+
+		return ranges;
+	}
+
+	private getLatexOpeningDelimiter(
+		text: string,
+		index: number
+	): { open: string; close: string } | null {
+		if (this.isEscaped(text, index)) {
+			return null;
+		}
+
+		if (text.startsWith("$$", index)) {
+			return { open: "$$", close: "$$" };
+		}
+
+		if (text.startsWith("\\[", index)) {
+			return { open: "\\[", close: "\\]" };
+		}
+
+		if (text.startsWith("\\(", index)) {
+			return { open: "\\(", close: "\\)" };
+		}
+
+		if (text[index] === "$" && !this.isDollarDelimiterInvalid(text, index)) {
+			return { open: "$", close: "$" };
+		}
+
+		return null;
+	}
+
+	private findLatexClosingDelimiter(
+		text: string,
+		start: number,
+		delimiter: string
+	): number {
+		let index = start;
+
+		while (index < text.length) {
+			if (
+				text.startsWith(delimiter, index) &&
+				!this.isEscaped(text, index) &&
+				!(
+					delimiter === "$" &&
+					this.isDollarDelimiterInvalid(text, index)
+				)
+			) {
+				return index;
+			}
+
+			index += 1;
+		}
+
+		return -1;
+	}
+
+	private isDollarDelimiterInvalid(text: string, index: number): boolean {
+		const previous = text[index - 1] ?? "";
+		const next = text[index + 1] ?? "";
+
+		return (
+			next === "$" ||
+			/\s/.test(next) ||
+			/\d/.test(next) ||
+			(Boolean(previous) && /\d/.test(previous))
+		);
+	}
+
+	private isEscaped(text: string, index: number): boolean {
+		let slashCount = 0;
+		let cursor = index - 1;
+
+		while (cursor >= 0 && text[cursor] === "\\") {
+			slashCount += 1;
+			cursor -= 1;
+		}
+
+		return slashCount % 2 === 1;
+	}
+
+	private isRangeIgnored(start: number, end: number, ranges: TextRange[]): boolean {
+		return ranges.some((range) => start < range.end && end > range.start);
 	}
 
 	private showCurrentIssue(editor: Editor) {
